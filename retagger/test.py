@@ -4,15 +4,21 @@ import chess
 import util
 import cook
 from model import Puzzle
-from tagger import logger, read
 from chess import parse_square, ROOK
 
 def make(id: str, fen: str, line: str) -> Puzzle:
-    return read({ "_id": id, "fen": fen, "line": line, "cp": 999999998 })
+    game = chess.pgn.Game()
+    board = chess.Board(fen)
+    game.setup(board)
+
+    moves = line.split(' ')
+    mainline = []
+    for move in moves:
+        mainline.append(chess.Move.from_uci(move))
+    game.add_line(mainline)
+    return Puzzle(id, game, 10000)
 
 class TestTagger(unittest.TestCase):
-
-    logger.setLevel(logging.DEBUG)
 
     def test_attraction(self):
         self.assertFalse(cook.attraction(make("yUM8F",

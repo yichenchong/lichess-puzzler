@@ -34,5 +34,6 @@ if __name__=="__main__":
 
             cp = 10
             puzzle = Puzzle(id, game, cp)
+            print(puzzle.mainline)
             break
 
