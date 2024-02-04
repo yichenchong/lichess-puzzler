@@ -1,3 +1,4 @@
+import csv
 import logging
 import argparse
 import chess
@@ -27,9 +28,8 @@ mate_defense_limit = chess.engine.Limit(depth=15, time=10, nodes=10_000_000)
 mate_soon = Mate(15)
 
 class Regenerator:
-    def __init__(self, engine: SimpleEngine, server: Server):
+    def __init__(self, engine: SimpleEngine):
         self.engine = engine
-        self.server = server
 
     def is_valid_mate_in_one(self, pair: NextMovePair) -> bool:
         if pair.best.score != Mate(1):
@@ -195,10 +195,7 @@ class Regenerator:
             if score < Cp(400) and material_diff(board, winner) > -1:
                 logger.debug("Not clearly winning and not from being down in material, aborting")
                 return score
-            logger.debug("Advantage {}#{} {} -> {}. Probing...".format(game_url, node.ply(), score))
-            if self.server.is_seen_pos(node):
-                logger.debug("Skip duplicate position")
-                return score
+            logger.debug("Advantage {}# {} -> {}. Probing...".format(game_url, node.ply(), score))
             puzzle_node = copy.deepcopy(node)
             solution: Optional[List[NextMovePair]] = self.cook_advantage(puzzle_node, winner)
             self.server.set_seen(node.game())
@@ -248,97 +245,53 @@ def open_file(file: str):
         return zstandard.open(file, "rt")
     return open(file)
 
-def main() -> None:
-    board = chess.Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-    map = board.piece_map(mask=chess.BB_ALL)
-    cur_fen = board.fen()
-    board.remove_piece_at(0)
-    board.remove_piece_at(63)
-    new_fen = board.fen()
-    print("old", cur_fen)
-    print("new", new_fen)
+def main(file, lines) -> None:
+    engine = SimpleEngine.popen_uci(r"C:\Users\wangh\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe")
+    regenerator = Regenerator(engine)
+    count = 0
+    with open(file) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        next(csv_reader)
+        for row in csv_reader:
+            id = row[0]
+            if id != "5Pehr":
+                break
+            fen = row[1]
+            moves = row[2]
+            board = chess.Board(fen)
+            game = chess.pgn.Game()
+            game.setup(board)
+            puzzle = Puzzle(game, moves, 988888888888)
+            anrs = regenerator.generate_new_puzzle(puzzle)
+            print(anrs)
+            # count += 1
+            # if count >= lines:
+            #     break
 
-    print(map)
-    # sys.setrecursionlimit(10000) # else node.deepcopy() sometimes fails?
-    # args = parse_args()
-    # if args.verbose == 2:
-    #     logger.setLevel(logging.DEBUG)
-    # else:
-    #     logger.setLevel(logging.INFO)
-    # engine = make_engine(args.engine, args.threads)
-    # server = Server(logger, args.url, args.token, version)
-    # generator = Regenerator(engine, server)
-    # games = 0
-    # site = "?"
-    # has_master = False
-    # tier = 0
-    # skip = int(args.skip)
-    # logger.info("Skipping first {} games".format(skip))
-    #
-    # parts = int(args.parts)
-    # part = int(args.part)
-    # print(f'v{version} {args.file} {part}/{parts}')
-    #
-    # try:
-    #     with open_file(args.file) as pgn:
-    #         skip_next = False
-    #         for line in pgn:
-    #             if line.startswith("[Site "):
-    #                 site = line
-    #                 games = games + 1
-    #                 has_master = False
-    #                 tier = 4
-    #             elif games < skip:
-    #                 continue
-    #             elif games % parts != part - 1:
-    #                 continue
-    #             if tier == 0:
-    #                 skip_next = True
-    #             elif line.startswith("[Variant ") and not line.startswith("[Variant \"Standard\"]"):
-    #                 skip_next = True
-    #             elif (
-    #                     (line.startswith("[WhiteTitle ") or line.startswith("[BlackTitle ")) and
-    #                     "BOT" not in line
-    #                 ):
-    #                 has_master = True
-    #             else:
-    #                 r_tier = util.rating_tier(line)
-    #                 t_tier = util.time_control_tier(line)
-    #                 if r_tier is not None:
-    #                     tier = min(tier, r_tier)
-    #                 elif t_tier is not None:
-    #                     tier = min(tier, t_tier)
-    #                 elif line.startswith("1. ") and skip_next:
-    #                     logger.debug("Skip {}".format(site))
-    #                     skip_next = False
-    #                 elif "%eval" in line:
-    #                     tier = tier + 1 if has_master else tier
-    #                     game = chess.pgn.read_game(StringIO("{}\n{}".format(site, line)))
-    #                     assert(game)
-    #                     nb_moves = len(list(game.mainline_moves()))
-    #                     tier = tier + 1 if nb_moves < 38 else tier
-    #                     tier = tier + 1 if nb_moves < 21 else tier
-    #                     game_id = game.headers.get("Site", "?")[20:]
-    #                     if server.is_seen(game_id):
-    #                         to_skip = 1
-    #                         logger.info(f'Game {game_id} was already seen before, skipping {to_skip} - {games}')
-    #                         skip = games + to_skip
-    #                         continue
-    #
-    #                     # logger.info(f'https://lichess.org/{game_id} tier {tier}')
-    #                     try:
-    #                         puzzle = generator.analyze_game(game, tier)
-    #                         if puzzle is not None:
-    #                             logger.info(f'v{version} {args.file} {part}/{parts} {util.avg_knps()} knps, tier {tier}, game {games}')
-    #                             server.post(game_id, puzzle)
-    #                     except Exception as e:
-    #                         logger.error("Exception on {}: {}".format(game_id, e))
-    # except KeyboardInterrupt:
-    #     print(f'v{version} {args.file} Game {games}')
-    #     sys.exit(1)
-    #
-    # engine.close()
-
+def main2(file, _):
+    engine = SimpleEngine.popen_uci(
+        r"C:\Users\wangh\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe")
+    regenerator = Regenerator(engine)
+    count = 0
+    with open(file) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        next(csv_reader)
+        for row in csv_reader:
+            if row[0] == "5Pehr":
+                print(row)
+                fen = row[1]
+                moves = [Move.from_uci(move) for move in row[2].split(" ")]
+                board = chess.Board(fen)
+                game = chess.pgn.Game()
+                game.setup(board)
+                puzzle = Puzzle(game, moves, 988888888888)
+                anrs = regenerator.generate_new_puzzle(puzzle)
+                print(anrs)
+                break
+                # count += 1
+                # if count >= lines:
+                #     break
 
 if __name__ == "__main__":
-    main()
+    main2("D:\wangh\Download\Pycharm\lichess-puzzler\lichess_db_puzzle.csv", 10)
+
