@@ -1,5 +1,3 @@
-import logging
-
 from typing import List, Optional, Union
 import chess
 from chess import square_rank, square_file, Board, SquareSet, Piece, PieceType, square_distance
@@ -9,13 +7,6 @@ from chess.pgn import ChildNode
 from model import Puzzle, TagKind
 import util
 from util import material_diff
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s %(levelname)-4s %(message)s', datefmt='%m/%d %H:%M')
-logger.setLevel(logging.INFO)
-
-def log(puzzle: Puzzle) -> None:
-    logger.info("https://lichess.org/training/{}".format(puzzle.id))
 
 def cook(puzzle: Puzzle) -> List[TagKind]:
     tags : List[TagKind] = []
@@ -56,7 +47,7 @@ def cook(puzzle: Puzzle) -> List[TagKind]:
         check_result = check(puzzle)
         if check_result is not None:
             tags.append(check_result)
-    map(make_check, checks)
+    list(map(make_check, checks))
 
     if defensive_move(puzzle) or check_escape(puzzle):
         tags.append("defensiveMove")
@@ -64,8 +55,12 @@ def cook(puzzle: Puzzle) -> List[TagKind]:
     if self_interference(puzzle) or interference(puzzle):
         tags.append("interference")
 
-    if pin_prevents_attack(puzzle) or pin_prevents_escape(puzzle):
-        tags.append("pin")
+    resultppa = pin_prevents_attack(puzzle)
+    resultppe = pin_prevents_escape(puzzle)
+    if resultppa is not None:
+        tags.append(resultppa)
+    if resultppe is not None:
+        tags.append(resultppe)
 
     if piece_endgame(puzzle, PAWN):
         tags.append("pawnEndgame")
@@ -107,7 +102,7 @@ def advanced_pawn(puzzle: Puzzle) -> str:
 def double_check(puzzle: Puzzle) -> str:
     for node in puzzle.mainline[1::2]:
         if len(node.board().checkers()) > 1:
-            pieces = [node.board().piece_at(square).piece_symbol() for square in node.board().checkers()]
+            pieces = [node.board().piece_at(square).symbol() for square in node.board().checkers()]
             pieces.sort()
             pieces = ','.join(pieces)
             tag = "doubleCheck:" + pieces
@@ -442,7 +437,7 @@ def pin_prevents_attack(puzzle: Puzzle) -> str:
                         util.is_hanging(board, attacked, attack)
                     ):
                     piece = util.moved_piece_type(node)
-                    return "pinPreventsAttack:" + PIECE_SYMBOLS[piece]
+                    return "pin:preventsAttack:" + PIECE_SYMBOLS[piece]
     return None
 
 # the pinned piece can't escape the attack
@@ -460,13 +455,14 @@ def pin_prevents_escape(puzzle: Puzzle) -> str:
                     attacker = board.piece_at(attacker_square)
                     assert(attacker)
                     if util.values[pinned_piece.piece_type] > util.values[attacker.piece_type]:
-                        return True
+                        piece = util.moved_piece_type(node)
+                        return "pin:preventsEscape:" + PIECE_SYMBOLS[piece]
                     if (util.is_hanging(board, pinned_piece, pinned_square) and
                         pinned_square not in board.attackers(not puzzle.pov, attacker_square) and
                         [m for m in board.pseudo_legal_moves if m.from_square == pinned_square and m.to_square not in pin_dir]
                     ):
                         piece = util.moved_piece_type(node)
-                        return "pinPreventsEscape:" + PIECE_SYMBOLS[piece]
+                        return "pin:preventsEscape:" + PIECE_SYMBOLS[piece]
     return None
 
 def attacking_f2_f7(puzzle: Puzzle) -> str:

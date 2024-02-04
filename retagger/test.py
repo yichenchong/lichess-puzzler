@@ -66,8 +66,8 @@ class TestTagger(unittest.TestCase):
         self.assertTrue(cook.check_escape(make("i6rNU", "1R6/1P4p1/8/6k1/4K3/1r4pP/8/8 w - - 0 39", "h3h4 g5g4")))
 
     def test_capturing_defender(self):
-        self.assertTrue(cook.capturing_defender(make("P6RR5", "3rk3/1RRn4/3r1p2/3pp3/8/2P1B3/5KP1/8 b - - 3 33", "d8b8 c7d7 d6d7 b7b8")))
-        self.assertTrue(cook.capturing_defender(make("gfj87", "2rqk2r/pp2ppbp/1n1p2p1/3P4/2P5/2N1B3/PP2QPPP/R4RK1 b k - 0 14", "c8c4 e3b6 d8b6 e2c4")))
+        self.assertEqual("capturingDefender", cook.capturing_defender(make("P6RR5", "3rk3/1RRn4/3r1p2/3pp3/8/2P1B3/5KP1/8 b - - 3 33", "d8b8 c7d7 d6d7 b7b8")))
+        self.assertEqual("capturingDefender", cook.capturing_defender(make("gfj87", "2rqk2r/pp2ppbp/1n1p2p1/3P4/2P5/2N1B3/PP2QPPP/R4RK1 b k - 0 14", "c8c4 e3b6 d8b6 e2c4")))
         self.assertFalse(cook.capturing_defender(make("i73wX", "2r3k1/1p4bp/pq2p1p1/3pr3/4nPP1/2N4P/PPPB3K/1R1Q1R2 b - - 2 22", "e4c3 b2c3 b6b1 d1b1")))
 
     def test_fork(self):
