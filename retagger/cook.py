@@ -118,11 +118,11 @@ def sacrifice(puzzle: Puzzle) -> str:
     # down in material compared to initial position, after moving
     diffs = [material_diff(n.board(), puzzle.pov) for n in puzzle.mainline]
     initial = diffs[0]
-    for i, d in enumerate(diffs)[1::2][1:]:
+    for i, d in list(enumerate(diffs))[1::2][1:]:
         if d - initial <= -2:
-            piece = util.moved_piece_type(puzzle.mainline[i])
             if not any(n.move.promotion for n in puzzle.mainline[::2][1:]):
-                return "sacrifice:" + PIECE_SYMBOLS[piece]
+                piece = puzzle.mainline[i - 2].board().piece_at(puzzle.mainline[i - 1].move.to_square).symbol().lower()
+                return "sacrifice:" + piece
     return None
 
 def x_ray(puzzle: Puzzle) -> str:
