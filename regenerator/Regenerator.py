@@ -15,7 +15,6 @@ from chess.engine import SimpleEngine, Mate, Cp, Score, PovScore
 from chess.pgn import Game, ChildNode, GameNode
 from typing import List, Optional, Union, Set
 from util import get_next_move_pair, material_count, material_diff, is_up_in_material, maximum_castling_rights, win_chances, count_mates
-from server import Server
 
 version = 48
 
@@ -184,9 +183,6 @@ class Regenerator:
             return score
         elif score > mate_soon:
             logger.debug("Mate {}#{} Probing...".format(game_url, node.ply()))
-            if self.server.is_seen_pos(node):
-                logger.debug("Skip duplicate position")
-                return score
             mate_solution = self.cook_mate(copy.deepcopy(node), winner)
             if mate_solution is None or (tier == 1 and len(mate_solution) == 3):
                 return score
@@ -198,7 +194,6 @@ class Regenerator:
             logger.debug("Advantage {}# {} -> {}. Probing...".format(game_url, node.ply(), score))
             puzzle_node = copy.deepcopy(node)
             solution: Optional[List[NextMovePair]] = self.cook_advantage(puzzle_node, winner)
-            self.server.set_seen(node.game())
             if not solution:
                 return score
             while len(solution) % 2 == 0 or not solution[-1].second:
