@@ -130,37 +130,38 @@ class Regenerator:
         is_previous_checked = current_board.is_check()
 
         for index, piece in dict_of_pieces.items():
-            if piece.symbol() == 'K' or piece.symbol() == 'k':
+            if piece.symbol() == 'K' or piece.symbol() == 'k'or piece == current_board.piece_at(puzzle.moves[0].from_square):
                 continue
-            current_board.remove_piece_at(index)
-            if current_board.is_checkmate() \
-                    or current_board.is_stalemate() \
-                    or (is_previous_checked and not current_board.is_check()):
-                current_board.set_piece_at(index, piece)
+            new_board = current_board.copy()
+            new_board.remove_piece_at(index)
+            if new_board.is_checkmate() \
+                    or new_board.is_stalemate() \
+                    or (is_previous_checked and not new_board.is_check()) \
+                    or (not is_previous_checked and new_board.is_check()):
                 continue
-            new_fen = current_board.fen()
+            new_fen = new_board.fen()
             new_game = chess.pgn.Game()
+            new_game.add_main_variation(puzzle.moves[0])
             new_game.setup(chess.Board(new_fen))
 
-            info = self.engine.analyse(current_board, chess.engine.Limit(depth=20))
+            info = self.engine.analyse(new_board.next().board(), chess.engine.Limit(depth=20))
             current_eval = info["score"]
-            new_puzzle = self.analyze_position(new_game, current_eval, tier=10)
+            new_puzzle = self.analyze_position(new_game.next(), current_eval, tier=10)
 
             if isinstance(new_puzzle, Score):
                 continue
             else:
                 new_moves = new_puzzle.moves
-                mainlines = new_game.mainline_moves()
-                if len(mainlines) != len(new_moves): continue
+                mainlines = puzzle.moves
+                if len(mainlines) != len(new_moves):
+                    continue
                 is_same = True
-                for i in range(0, len(new_moves)) :
+                for i in range(0, len(new_moves)):
                     if new_moves[i] != mainlines[i]:
                         is_same = False
                         break
                 if is_same:
                     puzzles.append(new_puzzle)
-        if len(puzzles) == 0:
-            return None
         return puzzles
 
     def analyze_position(self, node: GameNode, current_eval: PovScore, tier: int) -> Union[Puzzle, Score]:
