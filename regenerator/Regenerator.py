@@ -19,6 +19,7 @@ from util import get_next_move_pair, material_count, material_diff, is_up_in_mat
 version = 48
 
 logger = logging.getLogger(__name__)
+logger.setLevel(10)
 logging.basicConfig(format='%(asctime)s %(levelname)-4s %(message)s', datefmt='%m/%d %H:%M')
 
 pair_limit = chess.engine.Limit(depth=50, time=30, nodes=30_000_000)
@@ -146,17 +147,18 @@ class Regenerator:
             info = self.engine.analyse(new_board.next().board(), chess.engine.Limit(depth=20))
             current_eval = info["score"]
             new_puzzle = self.analyze_position(new_game.next(), current_eval, tier=10)
-
+            print(new_puzzle)
             if isinstance(new_puzzle, Score):
                 continue
             else:
                 new_moves = new_puzzle.moves
                 mainlines = puzzle.moves
-                if len(mainlines) != len(new_moves):
+                if len(mainlines) <= len(new_moves):
+                    print(len(mainlines), mainlines, len(new_moves), new_moves)
                     continue
                 is_same = True
-                for i in range(0, len(new_moves)):
-                    if new_moves[i] != mainlines[i]:
+                for i in range(1, len(mainlines)):
+                    if new_moves[i-1] != mainlines[i]:
                         is_same = False
                         break
                 if is_same:
