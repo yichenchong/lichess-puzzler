@@ -150,7 +150,6 @@ class Regenerator:
                     or (not is_previous_checked and new_board.is_check())\
                     or not new_board.is_legal(puzzle.moves[0]):
                 continue
-            print(chess.SQUARE_NAMES[index], piece)
             new_fen = new_board.fen()
             new_game = chess.pgn.Game()
             new_game.add_main_variation(puzzle.moves[0])
@@ -253,8 +252,7 @@ def main(file, lines):
         next(csv_reader)
         for row in csv_reader:
             id = row[0]
-            if id != "000hf":
-                continue
+
             fen = row[1]
             moves = [Move.from_uci(move) for move in row[2].split(" ")]
             board = chess.Board(fen)
@@ -265,14 +263,15 @@ def main(file, lines):
             anrs = regenerator.generate_new_puzzle(puzzle)
             end = time.time()
             print("-----------------------")
-            print(f"Now is the {row}th puzzle")
+            print(f"Now is the {id} puzzle")
             print("The time used is: ", end - start)
             print("the size of the generated new puzzles is: ", len(anrs))
             print(anrs)
 
-            count += 1
-            if count >= lines:
+            if count > 100:
+                count+=1
                 break
+
 
 if __name__ == "__main__":
     main(r"C:\Users\wangh\Downloads\lichess_db_puzzle\lichess_db_puzzle.csv", 100)
