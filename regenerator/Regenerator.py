@@ -1,6 +1,8 @@
 import csv
 import logging
 import argparse
+import time
+
 import chess
 import chess.pgn
 import chess.engine
@@ -19,7 +21,7 @@ from util import get_next_move_pair, material_count, material_diff, is_up_in_mat
 version = 48
 
 logger = logging.getLogger(__name__)
-logger.setLevel(10)
+logger.setLevel(0)
 logging.basicConfig(format='%(asctime)s %(levelname)-4s %(message)s', datefmt='%m/%d %H:%M')
 
 pair_limit = chess.engine.Limit(depth=50, time=30, nodes=30_000_000)
@@ -96,9 +98,11 @@ class Regenerator:
 
         return [move] + follow_up
 
-    def cook_advantage(self, node: ChildNode, winner: Color) -> Optional[List[NextMovePair]]:
+    def cook_advantage(self, node: ChildNode, winner: Color, moves: [Move], compare_pos: int) -> Optional[List[NextMovePair]]:
 
         board = node.board()
+        if compare_pos >= len(moves):
+            return []
 
         if board.is_repetition(2):
             logger.debug("Found repetition, canceling")
@@ -107,11 +111,13 @@ class Regenerator:
         pair = self.get_next_pair(node, winner)
         if not pair:
             return []
+        if pair.best.move != moves[compare_pos]:
+            return None
         if pair.best.score < Cp(200):
             logger.debug("Not winning enough, aborting")
             return None
 
-        follow_up = self.cook_advantage(node.add_main_variation(pair.best.move), winner)
+        follow_up = self.cook_advantage(node.add_main_variation(pair.best.move), winner, moves, compare_pos+1)
 
         if follow_up is None:
             return None
@@ -130,42 +136,38 @@ class Regenerator:
         is_previous_checked = current_board.is_check()
 
         for index, piece in dict_of_pieces.items():
-            if piece.symbol() == 'K' or piece.symbol() == 'k'or piece == current_board.piece_at(puzzle.moves[0].from_square):
+            if piece.symbol() != "p" or chess.SQUARE_NAMES[index] != "e6":
+                continue
+            if piece.symbol() == 'K' or piece.symbol() == 'k' \
+                    or index == puzzle.moves[0].from_square \
+                    or index == puzzle.moves[0].to_square:
                 continue
             new_board = current_board.copy()
             new_board.remove_piece_at(index)
             if new_board.is_checkmate() \
                     or new_board.is_stalemate() \
                     or (is_previous_checked and not new_board.is_check()) \
-                    or (not is_previous_checked and new_board.is_check()):
+                    or (not is_previous_checked and new_board.is_check())\
+                    or not new_board.is_legal(puzzle.moves[0]):
                 continue
+            print(chess.SQUARE_NAMES[index], piece)
             new_fen = new_board.fen()
             new_game = chess.pgn.Game()
             new_game.add_main_variation(puzzle.moves[0])
             new_game.setup(chess.Board(new_fen))
-
-            info = self.engine.analyse(new_board.next().board(), chess.engine.Limit(depth=20))
+            info = self.engine.analyse(new_game.next().board(), chess.engine.Limit(depth=20))
             current_eval = info["score"]
-            new_puzzle = self.analyze_position(new_game.next(), current_eval, tier=10)
-            print(new_puzzle)
+
+            new_puzzle = self.analyze_position(new_game.next(), current_eval, puzzle.moves, tier=10)
             if isinstance(new_puzzle, Score):
                 continue
             else:
                 new_moves = new_puzzle.moves
                 mainlines = puzzle.moves
-                if len(mainlines) <= len(new_moves):
-                    print(len(mainlines), mainlines, len(new_moves), new_moves)
-                    continue
-                is_same = True
-                for i in range(1, len(mainlines)):
-                    if new_moves[i-1] != mainlines[i]:
-                        is_same = False
-                        break
-                if is_same:
-                    puzzles.append(new_puzzle)
+                puzzles.append(new_puzzle)
         return puzzles
 
-    def analyze_position(self, node: GameNode, current_eval: PovScore, tier: int) -> Union[Puzzle, Score]:
+    def analyze_position(self, node: ChildNode, current_eval: PovScore, moves: [Move], tier: int) -> Union[Puzzle, Score]:
 
         board = node.board()
         winner = board.turn
@@ -195,7 +197,7 @@ class Regenerator:
                 return score
             logger.debug("Advantage {}# {} -> {}. Probing...".format(game_url, node.ply(), score))
             puzzle_node = copy.deepcopy(node)
-            solution: Optional[List[NextMovePair]] = self.cook_advantage(puzzle_node, winner)
+            solution: Optional[List[NextMovePair]] = self.cook_advantage(puzzle_node, winner, moves, 1)
             if not solution:
                 return score
             while len(solution) % 2 == 0 or not solution[-1].second:
@@ -242,7 +244,7 @@ def open_file(file: str):
         return zstandard.open(file, "rt")
     return open(file)
 
-def main(file, lines) -> None:
+def main(file, lines):
     engine = SimpleEngine.popen_uci(r"C:\Users\wangh\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe")
     regenerator = Regenerator(engine)
     count = 0
@@ -251,44 +253,27 @@ def main(file, lines) -> None:
         next(csv_reader)
         for row in csv_reader:
             id = row[0]
-            if id != "5Pehr":
-                break
+            if id != "000hf":
+                continue
             fen = row[1]
-            moves = row[2]
+            moves = [Move.from_uci(move) for move in row[2].split(" ")]
             board = chess.Board(fen)
             game = chess.pgn.Game()
             game.setup(board)
             puzzle = Puzzle(game, moves, 988888888888)
+            start = time.time()
             anrs = regenerator.generate_new_puzzle(puzzle)
+            end = time.time()
+            print("-----------------------")
+            print(f"Now is the {row}th puzzle")
+            print("The time used is: ", end - start)
+            print("the size of the generated new puzzles is: ", len(anrs))
             print(anrs)
-            # count += 1
-            # if count >= lines:
-            #     break
 
-def main2(file, _):
-    engine = SimpleEngine.popen_uci(
-        r"C:\Users\wangh\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe")
-    regenerator = Regenerator(engine)
-    count = 0
-    with open(file) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        next(csv_reader)
-        for row in csv_reader:
-            if row[0] == "5Pehr":
-                print(row)
-                fen = row[1]
-                moves = [Move.from_uci(move) for move in row[2].split(" ")]
-                board = chess.Board(fen)
-                game = chess.pgn.Game()
-                game.setup(board)
-                puzzle = Puzzle(game, moves, 988888888888)
-                anrs = regenerator.generate_new_puzzle(puzzle)
-                print(anrs)
+            count += 1
+            if count >= lines:
                 break
-                # count += 1
-                # if count >= lines:
-                #     break
 
 if __name__ == "__main__":
-    main2("D:\wangh\Download\Pycharm\lichess-puzzler\lichess_db_puzzle.csv", 10)
+    main(r"C:\Users\wangh\Downloads\lichess_db_puzzle\lichess_db_puzzle.csv", 100)
 
