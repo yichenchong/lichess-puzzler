@@ -267,6 +267,8 @@ class TestUtil(unittest.TestCase):
 
         tags1 = cook.cook(testPuzzle1)
         tags2 = cook.cook(testPuzzle2)
+        print(tags1)
+        print(tags2)
         self.assertEqual(util.compute_similarity(tags1, tags2), 6)
 
 

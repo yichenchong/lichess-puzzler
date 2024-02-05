@@ -47,6 +47,7 @@ def cook(puzzle: Puzzle) -> List[TagKind]:
         check_result = check(puzzle)
         if check_result is not None:
             tags.append(check_result)
+
     list(map(make_check, checks))
 
     if defensive_move(puzzle) or check_escape(puzzle):
@@ -89,7 +90,7 @@ def cook(puzzle: Puzzle) -> List[TagKind]:
         tags.append("veryLong")
     else:
         tags.append("long")
-
+    tags.sort()
     return tags
 
 # No need to modify
