@@ -5,8 +5,8 @@ from chess import KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN
 from chess.pgn import ChildNode
 from typing import Type, TypeVar
 
-from sympy.abc import lamda
-
+#from retagger import cook
+from retagger.model import Puzzle
 
 A = TypeVar('A')
 
@@ -199,3 +199,9 @@ def compute_similarity(tags1: List[str], tags2: List[str]) -> int:
     diff += max(len(tags1) - deleted, len(tags2))
 
     return diff
+
+def search_similar_puzzle(tags: List[str], puzzles: List[Tuple[str, List[str]]]) -> Tuple[str, List[str]]:
+    return min(puzzles, key=(lambda p: compute_similarity(tags, p[1])))
+
+
+

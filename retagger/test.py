@@ -271,6 +271,5 @@ class TestUtil(unittest.TestCase):
         print(tags2)
         self.assertEqual(util.compute_similarity(tags1, tags2), 6)
 
-
 if __name__ == '__main__':
     unittest.main()
