@@ -256,5 +256,19 @@ class TestUtil(unittest.TestCase):
             chess.Board("8/3P4/8/4N2b/7p/6N1/8/4K3 b - - 0 1"), parse_square("h5")
         ))
 
+    def test_compute_similarity(self):
+        testPuzzle1 = make("HWgCr",
+                           "r4k1r/ppp2Bp1/3p1q1p/3Qp3/3b4/8/PP3nPP/RNB2RK1 w - - 0 14",
+                           "f7h5 f2h3 g1h1 f6f1")
+
+        testPuzzle2 = make("2xWu3",
+                           "rn3rk1/ppp2ppp/8/2b1N3/2Bqn1P1/3p4/PPP3PP/RNBQR2K w - - 1 12",
+                           "c1e3 d4e3 e1e3 e4f2 h1g1 f2d1")
+
+        tags1 = cook.cook(testPuzzle1)
+        tags2 = cook.cook(testPuzzle2)
+        self.assertEqual(util.compute_similarity(tags1, tags2), 6)
+
+
 if __name__ == '__main__':
     unittest.main()

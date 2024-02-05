@@ -22,12 +22,12 @@ TagKind = Literal[
     "discoveredAttack",
     "deflection",
     "doubleBishopMate",
-    "doubleCheck",
+    "doubleCheck",  # has multiple layers
     "dovetailMate",
     "equality",
     "enPassant",
     "exposedKing",
-    "fork",
+    "fork",  # has multiple layers
     "hangingPiece",
     "hookMate",
     "interference",
@@ -44,22 +44,22 @@ TagKind = Literal[
     "oneMove",
     "overloading",
     "pawnEndgame",
-    "pin",
+    "pin",   # has multiple layers
     "promotion",
     "queenEndgame",
     "queensideAttack",
     "quietMove",
     "rookEndgame",
     "queenRookEndgame",
-    "sacrifice",
+    "sacrifice",    # has multiple layers
     "short",
     "simplification",
-    "skewer",
+    "skewer",      # has multiple layers
     "smotheredMate",
     "trappedPiece",
     "underPromotion",
     "veryLong",
-    "xRayAttack",
+    "xRayAttack",   # has multiple layers
     "zugzwang"
 ]
 
